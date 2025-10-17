@@ -1,98 +1,170 @@
-# Normal Map Generator v5
+# Advanced Normal Map Generator v3.2
 
-Advanced Normal Map Generator with MiDaS depth estimation and multiple edge detection algorithms.
+A research-grade normal map processing tool integrating **MiDaS depth estimation**, **edge-based normal reconstruction**, and **GPU texture output pipelines (DDS BC5/BC4)**. Designed for consistent normal generation across **vision research**, **graphics experiments**, and **engine-level deployment (Unity/Unreal/DirectX/OpenGL)**.
 
-## 🎯 Features
 
-- **Multiple Edge Detection Algorithms**: Sobel, Scharr, Prewitt, and more
-- **MiDaS Integration**: High-quality depth estimation using DPT-Large model
-- **Independent Parameter Controls**: Separate settings for depth and normal maps
-- **Noise Reduction**: Advanced preprocessing to reduce artifacts
-- **Batch Processing**: Process multiple images at once
-- **WSL Support**: Windows-friendly download paths
-- **Compression Options**: Multiple file formats and compression levels
-- **Preset Combinations**: Quick parameter presets for different materials
+---
+## 🔬 Project Overview
+This tool was built for **precise height-to-normal mapping**, **depth-aware material reconstruction**, and **engine-friendly normal output**. It supports both **Computer Vision (CV)** and **Graphics (DCC/CG/Game Dev)** workflows.
 
-## 🛠️ Installation
+Unlike typical normal map generators, this system provides:
+- **Full algorithmic control** (Sobel/Scharr/Prewitt edge extraction)
+- **Differentiated parameter pipelines** (independent depth/normal preprocessing)
+- **MiDaS depth refinement** (depth-to-normal conversion)
+- **Green channel orientation control** (OpenGL ⬆️ / DirectX/Unity ⬇️)
+- **DDS GPU compression output** (BC5 for normal, BC4 for displacement/height)
 
+
+---
+## ✨ Key Features
+| Feature | Description |
+|----------|-------------|
+| ✅ Direct normal extraction | From RGB luminance height estimation |
+| ✅ MiDaS integration | Depth-to-normal from monocular depth |
+| ✅ Independent pipelines | Separate gamma/filters for depth & normal |
+| ✅ Noise control | Bilateral/median prefilters |
+| ✅ Green Channel Orientation | **OpenGL (Green-Up)** / **DirectX (Green-Down)** |
+| ✅ GPU DDS output | **BC5 normal** / **BC4 depth-height** via texconv |
+| ✅ WebP Lossless | Compact + high fidelity normal encoding |
+| ✅ Batch processing | Multi-file automation |
+| ✅ WSL-friendly paths | Automatic Windows path translation |
+
+
+---
+## 🔧 Installation
 ```bash
-# Clone the repository
 git clone https://github.com/ghjghjghkimo/Normal_map_generator.git
 cd Normal_map_generator
-
-# Create virtual environment
-python -m venv Normal_map_env
-source Normal_map_env/bin/activate  # Linux/WSL
-# or
-Normal_map_env\Scripts\activate     # Windows
-
-# Install dependencies
-pip install torch torchvision gradio opencv-python Pillow numpy
+python -m venv nmgen_env
+# Windows
+env\Scripts\activate
+# macOS/WSL/Linux
+source nmgen_env/bin/activate
+pip install -r requirements.txt
 ```
 
-## 🚀 Usage
+✅ **Optional (for DDS output)** – Install `texconv.exe` (DirectXTex)  
+https://github.com/microsoft/DirectXTex
 
+
+---
+## 🚀 Launch
 ```bash
-python v5.py
+python v3_2.py
+```
+Open browser: **http://127.0.0.1:7860**
+
+---
+## 🧭 Normal Space Control
+This tool supports **engine-specific normal orientation**:
+
+| Engine | Green Axis | Setting |
+|--------|------------|---------|
+| Unity / Unreal / DirectX | Green ↓ Down | ✅ Default |
+| OpenGL / Vulkan | Green ↑ Up | enable `OpenGL mode` |
+
+You can also enforce correct normal orientation during **DDS (BC5) export** (`-inverty`).
+
+
+---
+## 🧱 Output Formats
+| Format | Purpose | Notes |
+|--------|---------|--------|
+| PNG | Standard normal output | ✅ Lossless |
+| WebP (Lossless) | Fast & small | ⚡ Recommended |
+| JPEG | **Not recommended** for normals | ❌ Lossy artifacts |
+| DDS (BC5) | GPU-optimized normal | ✅ Best for engines |
+| DDS (BC4) | Height/Mask maps | Compact grayscale |
+
+
+---
+## 🎛 Normal Generation Algorithms
+| Algorithm | Behavior | Best Use |
+|-----------|----------|----------|
+| smooth_sobel | Smoothed Sobel edges | General-purpose |
+| sobel | Standard edge detection | Hard surfaces |
+| sobel_5 | Larger edge sensitivity | Mid-textures |
+| scharr | High gradient contrast | Metals, sci-fi |
+| prewitt | Soft gradients | Organic surfaces |
+
+
+---
+## 🧪 Parameter Guide
+| Parameter | Description | Range |
+|-----------|-------------|--------|
+| Normal Strength | Z-axis intensity | 0.001–0.2 |
+| Normal Gamma | Shape amplification | 0.1–3.0 |
+| Normal Blur/Sharp | Bilateral filter control | -10 to 10 |
+| Depth Gamma | MiDaS leveling | 0.1–3.0 |
+| Depth Blur/Sharp | Refine depth smoothness | -10 to 10 |
+
+
+---
+## 🛠 Presets
+✅ Built-in presets include:
+- `標準 (低雜訊)` – Balanced
+- `石材專用` – High solidity
+- `平滑` – Clean edges
+- `銳利` – Maximum detail
+- `極致細節` – Feature boost
+
+
+---
+## 🗃 Batch Processing
+Supports **batch image generation** with **shared parameter control**. Produces structured output including:
+```
+mytexture_normal.png
+mytexture_depth.png
+```
+Or DDS engine form:
+```
+mytexture_normal.dds  (BC5)
+mytexture_depth.dds   (BC4)
 ```
 
-Then open your browser to the displayed URL (usually http://127.0.0.1:7860)
 
-## 📱 Interface
-
-### Single Image Processing
-- Upload your image
-- Choose preset or adjust parameters manually
-- Select normal map generation method (Direct from image or MiDaS depth)
-- Download results
-
-### Batch Processing
-- Upload multiple images
-- Set processing parameters
-- Batch generate all normal maps
-
-## ⚙️ Parameters
-
-| Parameter | Description | Range | Recommended |
-|-----------|-------------|-------|-------------|
-| **Strength** | Normal map intensity | 0.001-0.1 | 0.01-0.015 |
-| **Depth Map Gamma** | Depth preview contrast | 0.1-3.0 | 1.0 |
-| **Normal Pre-Gamma** | Pre-processing contrast | 0.1-3.0 | 0.8-1.2 |
-| **Blur/Sharp** | Image smoothing | -10 to 10 | -3 to -5 |
-
-## 🎨 Algorithms
-
-- **smooth_sobel**: Best for reducing noise ⭐ Recommended
-- **sobel_5**: Larger kernel, smoother results
-- **scharr**: Enhanced edge detection
-- **prewitt**: Alternative edge detection
-- **sobel**: Classic Sobel operator
-
-## 📁 Output Formats
-
-- **PNG**: Lossless, best quality (recommended)
-- **WEBP**: High compression ratio
-- **JPEG**: Smallest files (not recommended for normal maps)
-
-## 🖼️ Presets
-
-- **標準 (低雜訊)**: Balanced settings with noise reduction
-- **石材專用**: Optimized for stone/brick textures
-- **平滑**: Maximum smoothing for clean results
-- **銳利**: Enhanced details for high-resolution textures
-
-## 🔧 WSL Support
-
-For Windows Subsystem for Linux users, the tool automatically detects WSL and provides Windows-accessible download paths:
-
+---
+## 🧩 WSL Path Support
+If using **WSL**, output paths are translated automatically:
 ```
-/mnt/c/Users/YourUsername/Downloads/normal_maps
+/mnt/c/Users/<username>/Downloads/normal_maps
 ```
+This makes results visible in **Windows File Explorer**.
 
-## 📝 License
 
-MIT License - feel free to use and modify!
+---
+## 🔒 Image Integrity
+✅ WebP export here uses **lossless** mode  
+✅ Avoid JPEG for normals (breaks tangent space)  
+✅ DDS export keeps **engine-ready vector precision**
 
-## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+---
+## 📌 Requirements
+- Python 3.8+  
+- PyTorch (CUDA optional)  
+- OpenCV + NumPy + Pillow  
+- Gradio UI  
+- (Optional) texconv for DDS
+
+
+---
+## 📜 License
+MIT License
+
+
+---
+## 🤝 Contribution
+PRs welcome — especially improvements for:
+- GPU normal refinement
+- Depth nonlinearity correction
+- Vulkan/Metal oriented normal conventions
+
+
+---
+## ✉️ Contact
+For collaboration or engine integration questions, feel free to reach out.
+
+---
+> Research utility version — Structured pipeline for depth-assisted normal map synthesis.
+
