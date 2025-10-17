@@ -37,7 +37,7 @@ git clone https://github.com/ghjghjghkimo/Normal_map_generator.git
 cd Normal_map_generator
 python -m venv nmgen_env
 # Windows
-env\Scripts\activate
+nmgen_env\Scripts\activate
 # macOS/WSL/Linux
 source nmgen_env/bin/activate
 pip install -r requirements.txt
