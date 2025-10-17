@@ -201,10 +201,14 @@ PRs welcome — especially improvements for:
 - Vulkan/Metal oriented normal conventions
 
 ---
-## ✉️ Research Depth Map to Normal Map
-| Depth Map to Normal Map |
-|-------------------------|
-| ![Depth Map to Normal Map](./docs/examples/sample_normal.png) |
+## ✉️ Research : Generate Normal Map from Depth Map (MiDaS)
+
+| Depth Input | Normal Output | Depth Output |
+|-------------|---------------|--------------|
+| ![Depth Input](./docs/examples/sample_input.jpg) | ![Normal from Depth](./docs/examples/sample_normal.png) | ![Depth Map](./docs/examples/sample_depth.webp) |
+
+This section showcases the tool's capability to generate normal maps from depth estimation using **MiDaS** deep learning model.
+
 ---
 ## ✉️ Contact
 For collaboration or engine integration questions, feel free to reach out.
