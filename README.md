@@ -50,6 +50,27 @@ python v3_2.py
 Open browser: **http://127.0.0.1:7860**
 
 ---
+## 🎨 Processing Examples
+
+### Example 1: Standard Texture
+This example demonstrates the normal map and depth map generation from a standard surface texture.
+
+| Input Image | Normal Map Output | Depth Map Output |
+|-------------|-------------------|------------------|
+| ![Sample Input](./docs/examples/sample_input.jpg) | ![Sample Normal Map](./docs/examples/sample_normal_webp.webp) | ![Sample Depth Map](./docs/examples/sample_depth.webp) |
+
+
+
+**Details:**
+- ✅ **Input**: Standard RGB texture (JPG)
+- ✅ **Normal Map**: PNG format - Lossless precision for game engines
+- ✅ **Depth Map**: WebP format - Compact grayscale representation
+- ✅ **Algorithm**: `smooth_sobel` (General-purpose edge detection)
+- ✅ **Green Channel**: DirectX/Unity convention (Green Down ⬇️)
+
+
+
+---
 ## 🧭 Normal Space Control
 This tool supports **engine-specific normal orientation**:
 
@@ -126,6 +147,40 @@ This makes results visible in **Windows File Explorer**.
 
 
 ---
+## 🎯 Quick Start Guide
+
+### Single Image Processing
+1. Click **"上傳圖片"** (Upload Image)
+2. Select your texture file
+3. Choose processing parameters (or use presets)
+4. Click **"生成貼圖"** (Generate Map)
+5. Download **Normal Map** and **Depth Map**
+
+### Batch Processing
+1. Click **"選擇多張圖片"** (Select Multiple Images)
+2. Choose multiple texture files at once
+3. Configure shared parameters
+4. Click **"開始批次處理"** (Start Batch Processing)
+5. All results saved with original filenames (`texture_normal.png`, `texture_depth.png`)
+
+### Recommended Settings
+
+**For Smooth Surfaces (Metal, Plastic)**
+- Algorithm: `scharr` or `smooth_sobel`
+- Strength: 0.008 - 0.012
+- Blur/Sharp: -3 to 0
+
+**For Detailed Textures (Stone, Fabric)**
+- Algorithm: `prewitt` or `sobel_5`
+- Strength: 0.012 - 0.018
+- Blur/Sharp: -5 to 2
+
+**For Organic Surfaces (Skin, Wood)**
+- Algorithm: `smooth_sobel` (Default)
+- Strength: 0.010 - 0.015
+- Blur/Sharp: -4 to -1
+
+---
 ## 📌 Requirements
 - Python 3.8+  
 - PyTorch (CUDA optional)  
@@ -145,7 +200,11 @@ PRs welcome — especially improvements for:
 - Depth nonlinearity correction
 - Vulkan/Metal oriented normal conventions
 
-
+---
+## ✉️ Research Depth Map to Normal Map
+| Depth Map to Normal Map |
+|-------------------------|
+| ![Depth Map to Normal Map](./docs/examples/sample_normal.png) |
 ---
 ## ✉️ Contact
 For collaboration or engine integration questions, feel free to reach out.
