@@ -1,0 +1,25 @@
+# Normal Map Generator - Python Dependencies
+# Python 3.10+
+
+# Core Dependencies
+gradio==5.49.1
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=2.1.0
+
+# Image Processing
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# Deep Learning Model
+timm>=0.9.0
+
+# Utilities
+pyyaml>=6.0
+
+# For Windows Folder Dialog
+# tkinter 已內置於 Python，無需安裝
+# DirectXTex texconv.exe 需單獨下載放在項目資料夾
+# Optional: GPU Support (uncomment if using CUDA)
+# torch-cuda-runtime>=12.1
+# Note: Install CUDA toolkit separately from NVIDIA for GPU support
