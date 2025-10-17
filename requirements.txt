@@ -19,7 +19,7 @@ pyyaml>=6.0
 
 # For Windows Folder Dialog
 # tkinter 已內置於 Python，無需安裝
-# DirectXTex texconv.exe 需單獨下載放在項目資料夾
+
 # Optional: GPU Support (uncomment if using CUDA)
 # torch-cuda-runtime>=12.1
 # Note: Install CUDA toolkit separately from NVIDIA for GPU support

@@ -272,111 +272,6 @@ def save_image_with_compression(image, path: str, prefix: str, compression_level
     except Exception as e:
         return f"❌ 儲存失敗: {e}"
 
-# ---------- DDS (texconv) ----------
-
-def _resolve_dds_format(fmt_str: str) -> Optional[str]:
-    fs = (fmt_str or '').lower()
-    if 'bc5' in fs:
-        return 'BC5'
-    if 'bc4' in fs:
-        return 'BC4'
-    return None
-
-
-def _find_texconv_exe() -> Optional[str]:
-    env = os.environ.get('TEXCONV_PATH')
-    if env and os.path.isfile(env):
-        return env
-    candidates = [
-        os.path.join(os.getcwd(), 'DirectXTex', 'texconv.exe'),
-        os.path.join(os.getcwd(), 'texconv.exe'),
-    ]
-    for c in candidates:
-        if os.path.isfile(c):
-            return c
-    which = shutil.which('texconv.exe')
-    if which:
-        return which
-    return None
-
-
-def save_dds_with_texconv(image, path: str, prefix: str, fmt_choice: str,
-                          filename_base: Optional[str] = None,
-                          force_green_down_on_export: bool = True) -> str:
-    if image is None:
-        return "沒有可下載的圖片"
-
-    dds_fmt_str = _resolve_dds_format(fmt_choice)
-    if dds_fmt_str is None:
-        return "❌ 未知的 DDS 格式選擇，請選擇 BC5 或 BC4"
-
-    texconv = _find_texconv_exe()
-    if not texconv:
-        return ("⚠️ 找不到 texconv.exe，無法輸出 DDS。\n"
-                "請將 texconv.exe 放到專案 DirectXTex/ 或加入 PATH，或設定環境變數 TEXCONV_PATH。")
-
-    try:
-        actual_path, _ = ensure_path_exists(path)
-        if filename_base:
-            target_name = f"{filename_base}.dds"
-        else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            target_name = f"{prefix}_{timestamp}.dds"
-        target_path = os.path.join(actual_path, target_name)
-
-        pil_img = image
-        if isinstance(pil_img, np.ndarray):
-            pil_img = Image.fromarray(pil_img)
-        if dds_fmt_str == 'BC4' and pil_img.mode != 'L':
-            pil_img = pil_img.convert('L')
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            src_png = os.path.join(tmpdir, 'src.png')
-            pil_img.save(src_png, format='PNG')
-
-            fmt_flag = 'BC5_UNORM' if dds_fmt_str == 'BC5' else 'BC4_UNORM'
-            out_dir = tmpdir
-
-            import subprocess
-            cmd = [texconv, '-f', fmt_flag, '-y']
-            # If we want to ensure DirectX green-down on export, flip Y for normals
-            if force_green_down_on_export and dds_fmt_str == 'BC5':
-                cmd += ['-inverty']
-            cmd += ['-o', out_dir, src_png]
-            completed = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            if completed.returncode != 0:
-                return f"❌ texconv 失敗: {completed.stderr or completed.stdout}"
-
-            produced = None
-            for name in os.listdir(out_dir):
-                if name.lower().endswith('.dds'):
-                    produced = os.path.join(out_dir, name)
-                    break
-            if not produced or not os.path.isfile(produced):
-                return "❌ texconv 未產生 DDS 檔案"
-            shutil.move(produced, target_path)
-
-        size_mb = os.path.getsize(target_path) / (1024 * 1024)
-        if actual_path.startswith('/mnt/c/'):
-            windows_path = actual_path.replace('/mnt/c/', 'C:\\').replace('/', '\\')
-            return (f"✅ DDS 壓縮儲存成功\n📁 路徑: {windows_path}\\{target_name}\n"
-                    f"🎮 格式: {dds_fmt_str}\n📦 大小: {size_mb:.2f} MB")
-        else:
-            return (f"✅ DDS 壓縮儲存成功\n📁 路徑: {target_path}\n"
-                    f"🎮 格式: {dds_fmt_str}\n📦 大小: {size_mb:.2f} MB")
-    except Exception as e:
-        return f"❌ DDS 儲存失敗: {e}"
-
-
-def save_with_possible_dds(image, path: str, prefix: str, compression_level: str,
-                           fmt_choice: str, filename_base: Optional[str] = None,
-                           force_green_down_on_export: bool = True) -> str:
-    if fmt_choice and str(fmt_choice).upper().startswith('DDS'):
-        return save_dds_with_texconv(image, path, prefix, fmt_choice, filename_base,
-                                     force_green_down_on_export=force_green_down_on_export)
-    else:
-        return save_image_with_compression(image, path, prefix, compression_level, fmt_choice, filename_base)
-
 # =============================
 # 5) Core pipeline (single image)
 # =============================
@@ -450,7 +345,7 @@ def process_image(input_image: np.ndarray, strength: float, level: float, blur_s
 def process_batch(files, strength, level, blur_sharp, algorithm, normal_source,
                   height_method, normal_level, normal_blur_sharp,
                   compression_level, file_format, output_path,
-                  green_up, force_green_down_on_export):
+                  green_up):
     if not files:
         return "沒有選擇檔案"
 
@@ -459,8 +354,6 @@ def process_batch(files, strength, level, blur_sharp, algorithm, normal_source,
     actual_path, _ = ensure_path_exists(output_path)
     batch_folder = os.path.join(actual_path, f"batch_{timestamp}")
     os.makedirs(batch_folder, exist_ok=True)
-
-    is_dds = file_format and str(file_format).upper().startswith('DDS')
 
     for i, file in enumerate(files):
         try:
@@ -475,41 +368,24 @@ def process_batch(files, strength, level, blur_sharp, algorithm, normal_source,
             base_filename = os.path.splitext(original_filename)[0]
 
             # Save normal
-            if is_dds and str(file_format).startswith('DDS (BC5'):
-                # DDS BC5 normal
-                msg = save_dds_with_texconv(
-                    normal_map, batch_folder, base_filename + "_normal",
-                    'DDS (BC5 - Normal)', filename_base=f"{base_filename}_normal",
-                    force_green_down_on_export=force_green_down_on_export
-                )
-                results.append(("✓ " if msg.startswith("✅") else "✗ ") + f"{base_filename}_normal.dds")
-            else:
-                ext = (file_format or 'PNG').lower()
-                normal_path = os.path.join(batch_folder, f"{base_filename}_normal.{ext}")
-                normal_compressed = compress_image(normal_map, compression_level, file_format or 'PNG')
-                if ext == 'jpeg' and normal_compressed.mode == 'RGBA':
-                    normal_compressed = normal_compressed.convert('RGB')
-                normal_compressed.save(normal_path)
-                results.append(f"✓ {base_filename}_normal.{ext}")
+            ext = (file_format or 'PNG').lower()
+            normal_path = os.path.join(batch_folder, f"{base_filename}_normal.{ext}")
+            normal_compressed = compress_image(normal_map, compression_level, file_format or 'PNG')
+            if ext == 'jpeg' and normal_compressed.mode == 'RGBA':
+                normal_compressed = normal_compressed.convert('RGB')
+            normal_compressed.save(normal_path)
+            results.append(f"✓ {base_filename}_normal.{ext}")
 
             # Save depth
             if depth_map is not None:
-                if is_dds and str(file_format).startswith('DDS (BC4'):
-                    msg = save_dds_with_texconv(
-                        depth_map, batch_folder, base_filename + "_depth",
-                        'DDS (BC4 - Depth)', filename_base=f"{base_filename}_depth",
-                        force_green_down_on_export=False  # depth is grayscale
-                    )
-                    results.append(("✓ " if msg.startswith("✅") else "✗ ") + f"{base_filename}_depth.dds")
-                else:
-                    ext = (file_format or 'PNG').lower()
-                    depth_for_compress = depth_map if isinstance(depth_map, Image.Image) else Image.fromarray(depth_map)
-                    depth_compressed = compress_image(depth_for_compress, compression_level, file_format or 'PNG')
-                    if ext == 'jpeg' and depth_compressed.mode == 'RGBA':
-                        depth_compressed = depth_compressed.convert('RGB')
-                    depth_path = os.path.join(batch_folder, f"{base_filename}_depth.{ext}")
-                    depth_compressed.save(depth_path)
-                    results.append(f"✓ {base_filename}_depth.{ext}")
+                ext = (file_format or 'PNG').lower()
+                depth_for_compress = depth_map if isinstance(depth_map, Image.Image) else Image.fromarray(depth_map)
+                depth_compressed = compress_image(depth_for_compress, compression_level, file_format or 'PNG')
+                if ext == 'jpeg' and depth_compressed.mode == 'RGBA':
+                    depth_compressed = depth_compressed.convert('RGB')
+                depth_path = os.path.join(batch_folder, f"{base_filename}_depth.{ext}")
+                depth_compressed.save(depth_path)
+                results.append(f"✓ {base_filename}_depth.{ext}")
 
         except Exception as e:
             results.append(f"✗ 檔案 {i+1} 處理失敗: {str(e)}")
@@ -520,21 +396,6 @@ def process_batch(files, strength, level, blur_sharp, algorithm, normal_source,
     else:
         feedback = f"✅ 批次處理完成！\n📁 儲存位置: {batch_folder}\n\n"
     return feedback + "\n".join(results)
-
-# ---------- texconv check ----------
-
-def check_texconv():
-    import subprocess
-    exe = _find_texconv_exe()
-    if not exe:
-        return ("⚠️ 未找到 texconv.exe。\n"
-                "請將 texconv.exe 放到專案 DirectXTex/、加入 PATH，或設定環境變數 TEXCONV_PATH。")
-    try:
-        cp = subprocess.run([exe, '-?'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
-        first_line = cp.stdout.splitlines()[0] if cp.stdout else ''
-        return f"✅ texconv 可用\n📍 路徑: {exe}\nℹ️ {first_line}"
-    except Exception as e:
-        return f"❌ texconv 檢查失敗: {e}"
 
 # =============================
 # 7) Presets
@@ -563,8 +424,8 @@ with gr.Blocks(title="Advanced Normal Map Generator v3.2", theme=gr.themes.Soft(
     gr.Markdown("""
     # 🎨 進階法線貼圖生成器 v3.2
     ### 綠通道方向切換｜Gamma 語意修正｜MiDaS 容錯與 FP16｜更穩定的 I/O
-    - **平台方向**：OpenGL (Green Up) 與 DirectX/Unity (Green Down) 可切換；DDS 匯出可強制綠向下。
-    - **壓縮建議**：Normal/Depth 建議 PNG 或 DDS；WebP 採 **lossless**，不建議 JPEG。
+    - **平台方向**：OpenGL (Green Up) 與 DirectX/Unity (Green Down) 可切換。
+    - **壓縮建議**：Normal/Depth 建議 PNG；WebP 採 **lossless**，不建議 JPEG。
     """)
 
     with gr.Tabs():
@@ -631,13 +492,11 @@ with gr.Blocks(title="Advanced Normal Map Generator v3.2", theme=gr.themes.Soft(
                             choices=[
                                 "PNG",
                                 "WEBP",
-                                "JPEG",
-                                "DDS (BC5 - Normal)",
-                                "DDS (BC4 - Height/Mask)"
+                                "JPEG"
                             ],
                             value="PNG",
                             label="檔案格式",
-                            info="DDS: 給 Unity/DirectX GPU；法線用 BC5，灰階用 BC4"
+                            info="建議使用 PNG 保留品質"
                         )
 
                     default_path = get_default_download_path()
@@ -656,12 +515,9 @@ with gr.Blocks(title="Advanced Normal Map Generator v3.2", theme=gr.themes.Soft(
                         set_path_btn = gr.Button("設定路徑", size="sm")
                         browse_folder_btn = gr.Button("🗂️ 瀏覽資料夾", size="sm")
 
-                    force_green_down_export = gr.Checkbox(value=True, label="DDS 匯出時強制綠向下 (-inverty)")
-
                     with gr.Row():
                         download_depth_btn = gr.Button("下載深度圖", variant="secondary")
                         download_normal_btn = gr.Button("下載法線貼圖", variant="secondary")
-                        check_texconv_btn = gr.Button("檢查 DDS 工具 (texconv)", size="sm")
 
                     download_feedback = gr.Textbox(label="狀態", interactive=False, lines=6)
 
@@ -711,16 +567,12 @@ with gr.Blocks(title="Advanced Normal Map Generator v3.2", theme=gr.themes.Soft(
                                 choices=[
                                     "PNG",
                                     "WEBP",
-                                    "JPEG",
-                                    "DDS (BC5 - Normal)",
-                                    "DDS (BC4 - Depth)"
+                                    "JPEG"
                                 ],
                                 value="PNG",
                                 label="檔案格式",
-                                info="DDS: 給 Unity/DirectX；法線用 BC5，深度圖用 BC4"
+                                info="建議使用 PNG 保留品質"
                             )
-                        batch_force_green_down_export = gr.Checkbox(value=True, label="DDS 匯出時強制綠向下 (-inverty)")
-
                         batch_output_path = gr.Textbox(
                             label="批次輸出資料夾",
                             value=get_default_download_path(),
@@ -802,7 +654,7 @@ with gr.Blocks(title="Advanced Normal Map Generator v3.2", theme=gr.themes.Soft(
             batch_files, batch_strength, batch_level, batch_blur_sharp, batch_algorithm,
             batch_normal_source, batch_height_method, batch_normal_level, batch_normal_blur_sharp,
             batch_compression_level, batch_file_format, batch_output_path,
-            batch_green_up_checkbox, batch_force_green_down_export
+            batch_green_up_checkbox
         ],
         outputs=[batch_result]
     )
@@ -830,26 +682,22 @@ with gr.Blocks(title="Advanced Normal Map Generator v3.2", theme=gr.themes.Soft(
     browse_folder_btn.click(open_folder_dialog, inputs=[], outputs=[download_path_input])
 
     download_depth_btn.click(
-        lambda img, path, comp_level, fmt, filename_base, force_down: save_with_possible_dds(
+        lambda img, path, comp_level, fmt, filename_base: save_image_with_compression(
             img, path, "depth_map", comp_level, fmt,
-            f"{filename_base}_depth" if filename_base else None,
-            force_green_down_on_export=False  # depth is grayscale
+            f"{filename_base}_depth" if filename_base else None
         ) if img is not None else "❌ 尚未生成深度圖",
-        inputs=[depth_map_state, download_path_input, compression_level, file_format, input_filename_state, force_green_down_export],
+        inputs=[depth_map_state, download_path_input, compression_level, file_format, input_filename_state],
         outputs=[download_feedback]
     )
 
     download_normal_btn.click(
-        lambda img, path, comp_level, fmt, filename_base, force_down: save_with_possible_dds(
+        lambda img, path, comp_level, fmt, filename_base: save_image_with_compression(
             img, path, "normal_map", comp_level, fmt,
-            f"{filename_base}_normal" if filename_base else None,
-            force_green_down_on_export=force_down
+            f"{filename_base}_normal" if filename_base else None
         ) if img is not None else "❌ 尚未生成法線貼圖",
-        inputs=[normal_map_state, download_path_input, compression_level, file_format, input_filename_state, force_green_down_export],
+        inputs=[normal_map_state, download_path_input, compression_level, file_format, input_filename_state],
         outputs=[download_feedback]
     )
-
-    check_texconv_btn.click(check_texconv, inputs=[], outputs=[download_feedback])
 
     batch_set_path_btn.click(set_quick_path, inputs=[batch_quick_paths], outputs=[batch_output_path])
     batch_browse_folder_btn.click(open_folder_dialog, inputs=[], outputs=[batch_output_path])

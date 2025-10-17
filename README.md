@@ -1,6 +1,6 @@
 # Advanced Normal Map Generator v3.2
 
-A research-grade normal map processing tool integrating **MiDaS depth estimation**, **edge-based normal reconstruction**, and **GPU texture output pipelines (DDS BC5/BC4)**. Designed for consistent normal generation across **vision research**, **graphics experiments**, and **engine-level deployment (Unity/Unreal/DirectX/OpenGL)**.
+A research-grade normal map processing tool integrating **MiDaS depth estimation**, **edge-based normal reconstruction**, and **image compression pipelines (PNG/WebP/JPEG)**. Designed for consistent normal generation across **vision research**, **graphics experiments**, and **engine-level deployment (Unity/Unreal/DirectX/OpenGL)**.
 
 
 ---
@@ -12,7 +12,7 @@ Unlike typical normal map generators, this system provides:
 - **Differentiated parameter pipelines** (independent depth/normal preprocessing)
 - **MiDaS depth refinement** (depth-to-normal conversion)
 - **Green channel orientation control** (OpenGL ⬆️ / DirectX/Unity ⬇️)
-- **DDS GPU compression output** (BC5 for normal, BC4 for displacement/height)
+- **Standard format output** (PNG/WebP/JPEG compression)
 
 
 ---
@@ -24,8 +24,7 @@ Unlike typical normal map generators, this system provides:
 | ✅ Independent pipelines | Separate gamma/filters for depth & normal |
 | ✅ Noise control | Bilateral/median prefilters |
 | ✅ Green Channel Orientation | **OpenGL (Green-Up)** / **DirectX (Green-Down)** |
-| ✅ GPU DDS output | **BC5 normal** / **BC4 depth-height** via texconv |
-| ✅ WebP Lossless | Compact + high fidelity normal encoding |
+| ✅ Standard formats | **PNG** / **WebP (Lossless)** / **JPEG** |
 | ✅ Batch processing | Multi-file automation |
 | ✅ WSL-friendly paths | Automatic Windows path translation |
 
@@ -43,10 +42,6 @@ source nmgen_env/bin/activate
 pip install -r requirements.txt
 ```
 
-✅ **Optional (for DDS output)** – Install `texconv.exe` (DirectXTex)  
-https://github.com/microsoft/DirectXTex
-
-
 ---
 ## 🚀 Launch
 ```bash
@@ -63,18 +58,14 @@ This tool supports **engine-specific normal orientation**:
 | Unity / Unreal / DirectX | Green ↓ Down | ✅ Default |
 | OpenGL / Vulkan | Green ↑ Up | enable `OpenGL mode` |
 
-You can also enforce correct normal orientation during **DDS (BC5) export** (`-inverty`).
-
 
 ---
 ## 🧱 Output Formats
 | Format | Purpose | Notes |
 |--------|---------|--------|
-| PNG | Standard normal output | ✅ Lossless |
-| WebP (Lossless) | Fast & small | ⚡ Recommended |
+| PNG | Standard normal output | ✅ Lossless, recommended |
+| WebP (Lossless) | Fast & compact | ⚡ Lossless encoding |
 | JPEG | **Not recommended** for normals | ❌ Lossy artifacts |
-| DDS (BC5) | GPU-optimized normal | ✅ Best for engines |
-| DDS (BC4) | Height/Mask maps | Compact grayscale |
 
 
 ---
@@ -116,11 +107,6 @@ Supports **batch image generation** with **shared parameter control**. Produces 
 mytexture_normal.png
 mytexture_depth.png
 ```
-Or DDS engine form:
-```
-mytexture_normal.dds  (BC5)
-mytexture_depth.dds   (BC4)
-```
 
 
 ---
@@ -136,7 +122,7 @@ This makes results visible in **Windows File Explorer**.
 ## 🔒 Image Integrity
 ✅ WebP export here uses **lossless** mode  
 ✅ Avoid JPEG for normals (breaks tangent space)  
-✅ DDS export keeps **engine-ready vector precision**
+✅ PNG export keeps **engine-ready vector precision**
 
 
 ---
@@ -144,8 +130,7 @@ This makes results visible in **Windows File Explorer**.
 - Python 3.8+  
 - PyTorch (CUDA optional)  
 - OpenCV + NumPy + Pillow  
-- Gradio UI  
-- (Optional) texconv for DDS
+- Gradio UI
 
 
 ---
